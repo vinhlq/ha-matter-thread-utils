@@ -261,7 +261,7 @@ function handleFirmwareUpload(req, res) {
 
 // ---- static file handler ----
 
-function handleRequest(req, res) {
+async function handleRequest(req, res) {
   const urlPath = (req.url ?? '/').split('?')[0];
 
   if (urlPath === '/api/upload-firmware') return handleFirmwareUpload(req, res);
