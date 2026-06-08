@@ -142,7 +142,7 @@ async function fetchHAThreadTLV() {
 
   return new Promise((resolve) => {
     let ws;
-    try { ws = new WebSocket('ws://homeassistant/api/websocket'); }
+    try { ws = new WebSocket('ws://homeassistant:8123/api/websocket'); }
     catch (e) { console.warn('[thread] WS connect error:', e.message); resolve(null); return; }
 
     let msgId = 1;
