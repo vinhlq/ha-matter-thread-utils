@@ -284,6 +284,9 @@ export class OtaPanel {
 
     try {
       const result = await this.service.uploadFirmware(this.selectedFile, fields);
+
+      this.setProgress('Waiting for matter-server restart…');
+      await this.service.waitForReconnect();
       this.clearProgress();
 
       this.vibrate(200);

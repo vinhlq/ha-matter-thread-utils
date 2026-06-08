@@ -178,29 +178,33 @@ function handleFirmwareUpload(req, res) {
         mkdirSync(OTA_WRITE_DIR, { recursive: true });
         writeFileSync(join(OTA_WRITE_DIR, otaFilename), otaBuffer);
 
-        // Descriptor format matches python-matter-server's MatterSoftwareVersion dataclass
-        // (flat object, snake_case field names — same as what check_node_update returns).
+        // Descriptor format matches python-matter-server's local OTA provider JSON schema.
+        // Fields must be camelCase inside a "modelVersion" wrapper — this is what
+        // load_local_updates() reads at startup from --ota-provider-dir.
         const descriptor = {
-          vid,
-          pid,
-          software_version: swVer,
-          software_version_string: swVerStr,
-          ota_url: `file://${OTA_SERVER_DIR}/${otaFilename}`,
-          ota_checksum: sha256,
-          ota_checksum_type: 1,
-          min_applicable_software_version: minVer,
-          max_applicable_software_version: maxVer,
-          software_version_valid: true,
-          firmware_information: null,
-          release_notes_url: fields.releaseNotesUrl || null,
-          update_source: 'local',
+          modelVersion: {
+            vid,
+            pid,
+            softwareVersion: swVer,
+            softwareVersionString: swVerStr,
+            softwareVersionValid: true,
+            otaUrl: `file://${OTA_SERVER_DIR}/${otaFilename}`,
+            otaFileSize: String(otaBuffer.length),
+            otaChecksum: sha256,
+            otaChecksumType: 1,
+            minApplicableSoftwareVersion: minVer,
+            maxApplicableSoftwareVersion: maxVer,
+            releaseNotesUrl: fields.releaseNotesUrl || '',
+            firmwareInformation: '',
+          },
         };
         const jsonName = `${vid}_${pid}_v${swVer}.json`;
         writeFileSync(join(OTA_WRITE_DIR, jsonName), JSON.stringify(descriptor, null, 2));
 
-        // python-matter-server scans ota-provider-dir dynamically on update_node —
-        // no restart needed; the file is available immediately after writing.
+        // python-matter-server loads --ota-provider-dir at startup only, so a restart
+        // is required before update_node will see the new descriptor.
         console.log(`[upload] firmware written: ${otaFilename} v${swVer} (${otaBuffer.length} bytes)`);
+        await restartMatterServer();
         sendJson(res, 200, { ok: true, softwareVersion: swVer, softwareVersionString: swVerStr, filename: otaFilename });
       } catch (err) {
         console.error('[upload]', err.message);
