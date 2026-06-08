@@ -1,0 +1,40 @@
+---
+name: HA Matter Thread Utils
+version: "0.1.0"
+slug: ha_matter_thread_utils
+description: >-
+  Matter device commissioning (QR scan / manual code) and OTA firmware
+  update utility for the python-matter-server add-on.
+url: https://github.com/vinhlq/ha-matter-thread-utils
+arch:
+  - aarch64
+  - amd64
+  - armv7
+  - armhf
+startup: application
+boot: auto
+ingress: true
+ingress_port: 5173
+# host_network lets us reach matter-server on 127.0.0.1:5580.
+# Requires matter-server to expose port 5580 to the host (set 5580/tcp: 5580
+# in its add-on config) when not using host_network on that add-on.
+host_network: true
+hassio_api: true   # needed to restart the matter-server add-on via Supervisor API
+map:
+  - type: addon_config
+    read_only: false
+options:
+  # WebSocket URL of python-matter-server.
+  matter_ws_url: "ws://127.0.0.1:5580"
+  # Path that matter-server uses internally for OTA firmware files.
+  # Official matter-server add-on always uses /config/updates (addon_config map).
+  ota_server_dir: "/config/updates"
+  # Supervisor add-on slug used to restart matter-server after a firmware upload.
+  # Use "core_matter_server" for the official HA add-on.
+  ota_addon_slug: "core_matter_server"
+schema:
+  matter_ws_url: str?
+  ota_server_dir: str?
+  ota_addon_slug: str?
+ports:
+  5173/tcp: null

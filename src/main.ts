@@ -43,7 +43,10 @@ function vibrate(pattern: number | number[]): void {
 
 // ---- connect to matter-server ----
 const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-const wsUrl = `${wsProto}//${location.host}/ws`;
+// Use a path relative to the current page so the URL is correct both when
+// served standalone (path = /) and behind HA ingress (path = /api/hassio_ingress/<token>/).
+const wsBase = location.pathname.replace(/[^/]*$/, '');
+const wsUrl = `${wsProto}//${location.host}${wsBase}ws`;
 log(`Connecting to ${wsUrl}`);
 
 const client = new MatterClient(wsUrl, log);
