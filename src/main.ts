@@ -12,6 +12,7 @@ const qrVideo = mustGet<HTMLVideoElement>('qr-video');
 const serverInfoEl = mustGet<HTMLElement>('server-info');
 const sdkEl = mustGet<HTMLElement>('server-sdk');
 const threadEl = mustGet<HTMLElement>('server-thread');
+const threadSyncBtn = mustGet<HTMLButtonElement>('thread-sync-btn');
 const btEl = mustGet<HTMLElement>('server-bt');
 
 type Mode = 'scan' | 'manual' | 'ota';
@@ -72,6 +73,15 @@ client.onStatusChange = (state, info) => {
     setStatus('error', 'Disconnected');
   }
 };
+
+threadSyncBtn.addEventListener('click', () => void (async () => {
+  threadSyncBtn.disabled = true;
+  threadSyncBtn.textContent = 'Syncing…';
+  const ok = await otaService.restoreThreadCredentials();
+  threadEl.textContent = ok ? '✓ credentials set' : '✗ missing';
+  threadSyncBtn.disabled = false;
+  threadSyncBtn.textContent = 'Sync';
+})());
 
 client.connect().catch((err: Error) => {
   log(`Connection failed: ${err.message}`);
