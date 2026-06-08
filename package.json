@@ -1,0 +1,26 @@
+{
+  "name": "ha-matter-thread-utils",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --host 0.0.0.0",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "busboy": "^1.6.0",
+    "qr-scanner": "^1.4.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.1.0",
+    "typescript": "^5.6.0",
+    "vite": "^7.1.0"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true
+  }
+}

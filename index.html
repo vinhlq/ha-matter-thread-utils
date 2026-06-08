@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#007aff" />
+  <title>HA Matter Thread Utils</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>HA Matter Thread Utils</h1>
+      <div id="status" class="connecting">Connecting…</div>
+    </header>
+
+    <nav id="mode-switcher">
+      <button data-mode="scan" class="active">Scan QR</button>
+      <button data-mode="manual">Enter Code</button>
+      <button data-mode="ota">OTA</button>
+    </nav>
+
+    <section id="scan-panel" class="panel active">
+      <div id="video-wrap">
+        <video id="qr-video" playsinline muted></video>
+      </div>
+      <p class="hint">Allow camera access and point at the Matter QR code.</p>
+    </section>
+
+    <section id="manual-panel" class="panel">
+      <label for="code-input">Setup code (QR text or 11-digit pairing code)</label>
+      <input id="code-input" type="text"
+             placeholder="MT:XXXXXXXXXX"
+             autocomplete="off" autocapitalize="characters" spellcheck="false" />
+      <button id="commission-btn" type="button">Commission</button>
+    </section>
+
+    <section id="ota-panel" class="panel">
+
+      <!-- Node picker shared by both sub-modes -->
+      <div class="form-row">
+        <label for="ota-node">Target node</label>
+        <div class="row-inline">
+          <select id="ota-node"></select>
+          <button id="ota-refresh-btn" type="button" title="Refresh node list" aria-label="Refresh">↻</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Current software version</label>
+        <div id="ota-current-version" class="readout">—</div>
+      </div>
+
+      <!-- Sub-mode switcher -->
+      <nav id="ota-submode">
+        <button data-sub="dcl" class="active">DCL update</button>
+        <button data-sub="local">Upload firmware</button>
+      </nav>
+
+      <!-- DCL sub-panel -->
+      <div id="ota-dcl-panel">
+        <button id="ota-check-btn" type="button">Check for update</button>
+        <div id="ota-update-info" class="update-info" hidden></div>
+        <button id="ota-update-btn" type="button" class="btn-primary" hidden>Update</button>
+        <p class="hint">Queries the Matter DCL for newer published firmware.</p>
+      </div>
+
+      <!-- Local firmware upload sub-panel -->
+      <div id="ota-local-panel" hidden>
+
+        <div id="ota-drop-zone" tabindex="0" role="button" aria-label="Select .ota firmware file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M12 16V4m0 0L8 8m4-4 4 4"/>
+            <path d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1"/>
+          </svg>
+          <p>Drop <code>.ota</code> file here or tap to browse</p>
+          <p id="ota-selected-filename" class="filename"></p>
+        </div>
+        <input id="ota-file-input" type="file" accept=".ota,application/octet-stream" hidden />
+
+        <div class="form-grid">
+          <div class="form-row">
+            <label for="ota-vid">Vendor ID (decimal)</label>
+            <input id="ota-vid" type="number" min="1" max="65535" placeholder="e.g. 65521" />
+          </div>
+          <div class="form-row">
+            <label for="ota-pid">Product ID (decimal)</label>
+            <input id="ota-pid" type="number" min="1" max="65535" placeholder="e.g. 32773" />
+          </div>
+          <div class="form-row">
+            <label for="ota-new-version">New version number</label>
+            <input id="ota-new-version" type="number" min="1" placeholder="e.g. 2" />
+          </div>
+          <div class="form-row">
+            <label for="ota-new-version-string">New version string</label>
+            <input id="ota-new-version-string" type="text" placeholder="e.g. 2.0.0" />
+          </div>
+          <div class="form-row">
+            <label for="ota-min-version">Min applicable version</label>
+            <input id="ota-min-version" type="number" min="0" value="0" />
+          </div>
+          <div class="form-row">
+            <label for="ota-release-url">Release notes URL (optional)</label>
+            <input id="ota-release-url" type="url" placeholder="https://…" />
+          </div>
+        </div>
+
+        <div id="ota-upload-progress" class="progress-msg" hidden></div>
+        <button id="ota-upload-btn" type="button" class="btn-primary" disabled>Upload &amp; update</button>
+
+        <p class="hint">Uploads the .ota file to matter-server, restarts it to register the firmware,
+          then triggers the OTA update. VID/PID are pre-filled from the selected node.</p>
+      </div>
+
+    </section>
+
+    <section id="server-info" class="panel info" hidden>
+      <span class="label">matter-server</span>
+      <span id="server-sdk">—</span>
+      <span class="label">Thread</span>
+      <span id="server-thread">—</span>
+      <span class="label">Bluetooth</span>
+      <span id="server-bt">—</span>
+    </section>
+
+    <section id="log">
+      <h2>Activity</h2>
+      <pre id="log-output"></pre>
+    </section>
+  </main>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
