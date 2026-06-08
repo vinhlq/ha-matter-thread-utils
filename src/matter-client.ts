@@ -17,6 +17,8 @@ export class MatterClient {
   private ws: WebSocket | null = null;
   private pending = new Map<string, Pending>();
   private nextId = 0;
+  private shouldReconnect = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   serverInfo: ServerInfo | null = null;
   onStatusChange: StatusListener | null = null;
@@ -24,6 +26,7 @@ export class MatterClient {
   constructor(private url: string, private log: (msg: string) => void) {}
 
   connect(): Promise<ServerInfo> {
+    this.shouldReconnect = true;
     return new Promise<ServerInfo>((resolve, reject) => {
       let settled = false;
       try {
@@ -80,6 +83,12 @@ export class MatterClient {
         for (const p of this.pending.values()) p.reject(new Error('Connection closed'));
         this.pending.clear();
         this.serverInfo = null;
+        if (this.shouldReconnect && !this.reconnectTimer) {
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+            this.connect().catch(() => {});
+          }, 3000);
+        }
       };
     });
   }

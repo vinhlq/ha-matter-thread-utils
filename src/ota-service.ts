@@ -90,14 +90,33 @@ export class OtaService {
     this.log(`✓ OTA complete for Node ${node.node_id}`);
   }
 
-  /** Polls until matter-server WebSocket reconnects after a restart. */
+  /** Waits for matter-server to disconnect and then reconnect after a restart. */
   waitForReconnect(): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      const deadline = setTimeout(
+        () => reject(new Error('Timed out waiting for matter-server to restart (90 s)')),
+        90_000,
+      );
+
+      // Phase 1: wait for disconnect (serverInfo → null).
+      // Phase 2: wait for reconnect (serverInfo truthy again).
+      let disconnected = !this.client.serverInfo;
+
       const check = () => {
-        if (this.client.serverInfo) { resolve(); return; }
+        if (!disconnected) {
+          disconnected = !this.client.serverInfo;
+          setTimeout(check, 500);
+          return;
+        }
+        if (this.client.serverInfo) {
+          clearTimeout(deadline);
+          resolve();
+          return;
+        }
         setTimeout(check, 800);
       };
-      setTimeout(check, 3000); // give matter-server time to shut down first
+
+      setTimeout(check, 500);
     });
   }
 
