@@ -11,6 +11,7 @@ export class OtaPanel {
   // Shared controls
   private nodeSelect    = mustGet<HTMLSelectElement>('ota-node');
   private refreshBtn    = mustGet<HTMLButtonElement>('ota-refresh-btn');
+  private vidPidEl      = mustGet<HTMLElement>('ota-vid-pid');
   private currentVerEl  = mustGet<HTMLElement>('ota-current-version');
 
   // DCL sub-panel
@@ -150,10 +151,15 @@ export class OtaPanel {
     this.clearDclResult();
 
     if (!node) {
+      this.vidPidEl.textContent = '—';
       this.currentVerEl.textContent = '—';
       return;
     }
 
+    const { vid, pid } = this.service.nodeUploadDefaults(node);
+    this.vidPidEl.textContent = vid !== null && pid !== null
+      ? `${vid} (0x${vid.toString(16).toUpperCase().padStart(4, '0')}) / ${pid} (0x${pid.toString(16).toUpperCase().padStart(4, '0')})`
+      : '—';
     this.currentVerEl.textContent = this.service.nodeVersionInfo(node).label;
     this.prefillLocalForm(node);
   }
