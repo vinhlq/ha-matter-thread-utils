@@ -17,6 +17,7 @@ panel_icon: mdi:chip
 panel_title: Matter Utils
 hassio_api: true        # needed for Supervisor API (discover matter-server IP)
 hassio_role: manager   # needed to restart other add-ons (OTA firmware upload)
+homeassistant_api: true # needed to fetch Thread credentials from HA Core after restart
 map:
   # all_addon_configs mounts every add-on's config directory at /addon_configs/<slug>/
   # inside our container.  We write OTA descriptor JSON + binary to

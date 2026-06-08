@@ -287,6 +287,9 @@ export class OtaPanel {
 
       this.setProgress('Waiting for matter-server restart…');
       await this.service.waitForReconnect();
+
+      this.setProgress('Restoring Thread credentials…');
+      await this.service.restoreThreadCredentials();
       this.clearProgress();
 
       this.vibrate(200);

@@ -129,6 +129,10 @@ export class MatterClient {
     });
   }
 
+  setThreadDataset(dataset: string): Promise<void> {
+    return this.send<void>('set_thread_dataset', { dataset });
+  }
+
   /** Generic device command — escape hatch for clusters/commands without a helper. */
   deviceCommand(args: {
     nodeId: number;

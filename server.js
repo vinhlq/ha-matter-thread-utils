@@ -131,6 +131,48 @@ async function restartMatterServer() {
   }
 }
 
+// ---- Thread TLV helper ----
+
+// Opens HA Core WebSocket, fetches the primary Thread dataset TLV, closes.
+// Returns the hex TLV string, or null if unavailable / not configured.
+async function fetchHAThreadTLV() {
+  if (!IS_HA_ADDON) return null;
+  const token = process.env.SUPERVISOR_TOKEN;
+  if (!token) return null;
+
+  return new Promise((resolve) => {
+    let ws;
+    try { ws = new WebSocket('ws://homeassistant/api/websocket'); }
+    catch { resolve(null); return; }
+
+    let msgId = 1;
+    const finish = (tlv) => {
+      clearTimeout(timer);
+      try { ws.close(); } catch {}
+      resolve(tlv);
+    };
+    const timer = setTimeout(() => finish(null), 5000);
+
+    ws.on('message', (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+        if (msg.type === 'auth_required') {
+          ws.send(JSON.stringify({ type: 'auth', access_token: token }));
+        } else if (msg.type === 'auth_ok') {
+          ws.send(JSON.stringify({ id: msgId++, type: 'thread/list_datasets' }));
+        } else if (msg.type === 'result' && msg.id === 1) {
+          const datasets = msg.result?.datasets;
+          if (!msg.success || !datasets?.length) { finish(null); return; }
+          ws.send(JSON.stringify({ id: msgId++, type: 'thread/get_dataset_tlv', dataset_id: datasets[0].dataset_id }));
+        } else if (msg.type === 'result' && msg.id === 2) {
+          finish(msg.success ? (msg.result?.tlv ?? null) : null);
+        }
+      } catch { finish(null); }
+    });
+    ws.on('error', () => finish(null));
+  });
+}
+
 // ---- firmware upload handler ----
 
 function handleFirmwareUpload(req, res) {
@@ -223,6 +265,13 @@ function handleRequest(req, res) {
   const urlPath = (req.url ?? '/').split('?')[0];
 
   if (urlPath === '/api/upload-firmware') return handleFirmwareUpload(req, res);
+
+  if (urlPath === '/api/thread-tlv') {
+    if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
+    try { sendJson(res, 200, { tlv: await fetchHAThreadTLV() }); }
+    catch { sendJson(res, 200, { tlv: null }); }
+    return;
+  }
 
   const rel = decodeURIComponent(urlPath).replace(/^\/+/, '');
   let filePath = resolve(DIST, rel);

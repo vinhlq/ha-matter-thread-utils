@@ -95,6 +95,26 @@ export class OtaService {
     }
   }
 
+  /**
+   * Fetches the Thread dataset TLV from HA Core and pushes it to matter-server.
+   * Called after every restart to ensure Thread credentials survive.
+   * Non-fatal: logs a warning if unavailable (e.g. HA Thread integration not configured).
+   */
+  async restoreThreadCredentials(): Promise<void> {
+    try {
+      const resp = await fetch('/api/thread-tlv');
+      const { tlv } = await resp.json() as { tlv: string | null };
+      if (tlv) {
+        await this.client.setThreadDataset(tlv);
+        this.log('Thread credentials restored');
+      } else {
+        this.log('Thread credentials: none found in HA (Thread integration not configured)');
+      }
+    } catch (e) {
+      this.log(`Thread restore skipped: ${(e as Error).message}`);
+    }
+  }
+
   /** Waits for matter-server to disconnect and then reconnect after a restart. */
   waitForReconnect(): Promise<void> {
     return new Promise((resolve, reject) => {
