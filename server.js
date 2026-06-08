@@ -20,11 +20,14 @@ const DIST = join(__dirname, 'dist');
 
 // ---- config: HA add-on options.json takes precedence over env vars ----
 
-const HA_OPTIONS_FILE = '/data/options.json';
-const IS_HA_ADDON     = existsSync(HA_OPTIONS_FILE);
+// SUPERVISOR_TOKEN is always injected by HA Supervisor into every add-on container.
+// Checking for it is more reliable than checking for /data/options.json, which may
+// not yet exist on first start (race condition).
+const IS_HA_ADDON = !!process.env.SUPERVISOR_TOKEN;
 
+const HA_OPTIONS_FILE = '/data/options.json';
 let haOpts = {};
-if (IS_HA_ADDON) {
+if (existsSync(HA_OPTIONS_FILE)) {
   try { haOpts = JSON.parse(readFileSync(HA_OPTIONS_FILE, 'utf8')); }
   catch (e) { console.warn('[config] Could not read options.json:', e.message); }
 }
