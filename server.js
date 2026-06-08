@@ -178,21 +178,22 @@ function handleFirmwareUpload(req, res) {
         mkdirSync(OTA_WRITE_DIR, { recursive: true });
         writeFileSync(join(OTA_WRITE_DIR, otaFilename), otaBuffer);
 
+        // Descriptor format matches python-matter-server's MatterSoftwareVersion dataclass
+        // (flat object, snake_case field names — same as what check_node_update returns).
         const descriptor = {
-          modelVersion: {
-            vid, pid,
-            softwareVersion: swVer,
-            softwareVersionString: swVerStr,
-            // otaUrl uses the path as matter-server sees it inside its own container.
-            otaUrl: `file://${OTA_SERVER_DIR}/${otaFilename}`,
-            otaChecksum: sha256,
-            otaChecksumType: 1,
-            minApplicableSoftwareVersion: minVer,
-            maxApplicableSoftwareVersion: maxVer,
-            softwareVersionValid: true,
-            firmwareInformation: null,
-            releaseNotesUrl: fields.releaseNotesUrl || null,
-          },
+          vid,
+          pid,
+          software_version: swVer,
+          software_version_string: swVerStr,
+          ota_url: `file://${OTA_SERVER_DIR}/${otaFilename}`,
+          ota_checksum: sha256,
+          ota_checksum_type: 1,
+          min_applicable_software_version: minVer,
+          max_applicable_software_version: maxVer,
+          software_version_valid: true,
+          firmware_information: null,
+          release_notes_url: fields.releaseNotesUrl || null,
+          update_source: 'local',
         };
         const jsonName = `${vid}_${pid}_v${swVer}.json`;
         writeFileSync(join(OTA_WRITE_DIR, jsonName), JSON.stringify(descriptor, null, 2));

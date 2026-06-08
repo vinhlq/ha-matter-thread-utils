@@ -86,8 +86,13 @@ export class OtaService {
 
   async applyLocalUpdate(node: NodeInfo, softwareVersion: number): Promise<void> {
     this.log(`▶ Starting OTA update Node ${node.node_id} → v${softwareVersion}`);
-    await this.client.updateNode(node.node_id, softwareVersion);
-    this.log(`✓ OTA complete for Node ${node.node_id}`);
+    try {
+      await this.client.updateNode(node.node_id, softwareVersion);
+      this.log(`✓ OTA triggered for Node ${node.node_id}`);
+    } catch (err) {
+      this.log(`✗ OTA trigger failed: ${(err as Error).message}`);
+      throw err;
+    }
   }
 
   /** Waits for matter-server to disconnect and then reconnect after a restart. */
