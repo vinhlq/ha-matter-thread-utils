@@ -74,14 +74,16 @@ if (IS_HA_ADDON) {
     });
     const _j = await _r.json();
     const _ip  = _j?.data?.ip_address;
-    const _port = new URL(MATTER_WS_URL).port || '5580';
+    const _u   = new URL(MATTER_WS_URL);
+    const _port = _u.port || '5580';
+    const _path = _u.pathname || '/ws';
     console.log(`[ha-matter-utils] Supervisor: matter-server ip_address=${_ip}`);
     if (_ip && _ip !== '0.0.0.0') {
-      MATTER_WS_URL = `ws://${_ip}:${_port}`;
+      MATTER_WS_URL = `ws://${_ip}:${_port}${_path}`;
     } else {
       // host_network add-on — reach it via the Docker bridge gateway
       const gw = defaultGateway();
-      if (gw) MATTER_WS_URL = `ws://${gw}:${_port}`;
+      if (gw) MATTER_WS_URL = `ws://${gw}:${_port}${_path}`;
       console.log(`[ha-matter-utils] host_network add-on; gateway=${gw}`);
     }
   } catch (e) {
@@ -260,6 +262,14 @@ function handleUpgrade(req, socket, head) {
       upstream.on('open', () => { fwd(client, upstream); fwd(upstream, client); });
       upstream.on('close',  ()  => client.close());
       upstream.on('error',  (e) => { console.error('[ws-proxy]', e.message); client.close(); });
+      upstream.on('unexpected-response', (_req, res) => {
+        let body = '';
+        res.on('data', c => { if (body.length < 300) body += c; });
+        res.on('end', () => {
+          console.error(`[ws-proxy] HTTP ${res.statusCode} from matter-server (expected 101). Body: ${body.trim()}`);
+          client.close();
+        });
+      });
       client.on('close',    ()  => upstream.close());
       client.on('error',    (e) => { console.error('[ws-client]', e.message); upstream.close(); });
     });
