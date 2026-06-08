@@ -18,6 +18,9 @@ import { WebSocket, WebSocketServer } from 'ws';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DIST = join(__dirname, 'dist');
 
+let BUILD_DATE = 'dev';
+try { BUILD_DATE = readFileSync(join(__dirname, 'build-date.txt'), 'utf8').trim(); } catch {}
+
 // ---- config: HA add-on options.json takes precedence over env vars ----
 
 // SUPERVISOR_TOKEN is always injected by HA Supervisor into every add-on container.
@@ -284,6 +287,7 @@ if (httpsServer) httpsServer.on('upgrade', handleUpgrade);
 const mode = IS_HA_ADDON ? 'HA add-on (ingress)' : 'standalone';
 
 httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`[ha-matter-utils] Build: ${BUILD_DATE}`);
   console.log(`[ha-matter-utils] HTTP  on :${PORT} [${mode}]`);
   console.log(`[ha-matter-utils] WebSocket proxy → ${MATTER_WS_URL}`);
   console.log(`[ha-matter-utils] OTA write → ${OTA_WRITE_DIR}  (server path: ${OTA_SERVER_DIR})`);

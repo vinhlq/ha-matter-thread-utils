@@ -27,5 +27,8 @@ RUN apk add --no-cache openssl && \
 COPY --from=build /app/dist ./dist
 COPY server.js ./
 
+# Bake build date into image so server startup log shows the build number.
+RUN date -u +%Y%m%d.%H%M%S > /app/build-date.txt
+
 EXPOSE 5173
 CMD ["node", "server.js"]
