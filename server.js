@@ -138,12 +138,12 @@ async function restartMatterServer() {
 async function fetchHAThreadTLV() {
   if (!IS_HA_ADDON) return null;
   const token = process.env.SUPERVISOR_TOKEN;
-  if (!token) return null;
+  if (!token) { console.warn('[thread] SUPERVISOR_TOKEN not set'); return null; }
 
   return new Promise((resolve) => {
     let ws;
     try { ws = new WebSocket('ws://homeassistant/api/websocket'); }
-    catch { resolve(null); return; }
+    catch (e) { console.warn('[thread] WS connect error:', e.message); resolve(null); return; }
 
     let msgId = 1;
     const finish = (tlv) => {
@@ -151,7 +151,10 @@ async function fetchHAThreadTLV() {
       try { ws.close(); } catch {}
       resolve(tlv);
     };
-    const timer = setTimeout(() => finish(null), 5000);
+    const timer = setTimeout(() => {
+      console.warn('[thread] timed out waiting for HA Core response');
+      finish(null);
+    }, 5000);
 
     ws.on('message', (raw) => {
       try {
@@ -159,17 +162,33 @@ async function fetchHAThreadTLV() {
         if (msg.type === 'auth_required') {
           ws.send(JSON.stringify({ type: 'auth', access_token: token }));
         } else if (msg.type === 'auth_ok') {
+          console.log('[thread] HA Core auth OK, listing datasets');
           ws.send(JSON.stringify({ id: msgId++, type: 'thread/list_datasets' }));
+        } else if (msg.type === 'auth_invalid') {
+          console.warn('[thread] HA Core auth failed — SUPERVISOR_TOKEN rejected');
+          finish(null);
         } else if (msg.type === 'result' && msg.id === 1) {
+          if (!msg.success) {
+            console.warn('[thread] thread/list_datasets error:', msg.error?.message ?? JSON.stringify(msg.error));
+            finish(null); return;
+          }
           const datasets = msg.result?.datasets;
-          if (!msg.success || !datasets?.length) { finish(null); return; }
+          console.log(`[thread] datasets returned: ${datasets?.length ?? 0}`);
+          if (!datasets?.length) { finish(null); return; }
+          console.log('[thread] fetching TLV for dataset', datasets[0].dataset_id);
           ws.send(JSON.stringify({ id: msgId++, type: 'thread/get_dataset_tlv', dataset_id: datasets[0].dataset_id }));
         } else if (msg.type === 'result' && msg.id === 2) {
-          finish(msg.success ? (msg.result?.tlv ?? null) : null);
+          if (!msg.success) {
+            console.warn('[thread] thread/get_dataset_tlv error:', msg.error?.message ?? JSON.stringify(msg.error));
+            finish(null); return;
+          }
+          const tlv = msg.result?.tlv ?? null;
+          console.log(`[thread] TLV fetched (${tlv ? tlv.length / 2 : 0} bytes)`);
+          finish(tlv);
         }
-      } catch { finish(null); }
+      } catch (e) { console.warn('[thread] message parse error:', e.message); finish(null); }
     });
-    ws.on('error', () => finish(null));
+    ws.on('error', (e) => { console.warn('[thread] WS error:', e.message); finish(null); });
   });
 }
 
