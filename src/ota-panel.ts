@@ -33,6 +33,11 @@ export class OtaPanel {
   private uploadBtn           = mustGet<HTMLButtonElement>('ota-upload-btn');
   private progressEl          = mustGet<HTMLElement>('ota-upload-progress');
 
+  // Upload complete dialog
+  private completeDialog   = mustGet<HTMLDialogElement>('ota-complete-dialog');
+  private completeMsg      = mustGet<HTMLElement>('ota-complete-msg');
+  private completeCloseBtn = mustGet<HTMLButtonElement>('ota-complete-close');
+
   // State
   private nodes: NodeInfo[] = [];
   private pendingDclUpdate: MatterSoftwareVersion | null = null;
@@ -78,6 +83,12 @@ export class OtaPanel {
     });
 
     this.uploadBtn.addEventListener('click', () => void this.handleUploadAndUpdate());
+
+    // Complete dialog
+    this.completeCloseBtn.addEventListener('click', () => this.completeDialog.close());
+    this.completeDialog.addEventListener('click', (e) => {
+      if (e.target === this.completeDialog) this.completeDialog.close();
+    });
   }
 
   // ---- sub-mode switch ----
@@ -276,6 +287,7 @@ export class OtaPanel {
 
       this.vibrate(200);
       this.clearProgress();
+      this.showCompleteDialog(node, result.softwareVersionString, result.softwareVersion);
       await this.handleRefresh();
     } catch (err) {
       this.vibrate([100, 50, 100]);
@@ -295,6 +307,14 @@ export class OtaPanel {
       minApplicableSoftwareVersion: this.minVersionInput.value,
       releaseNotesUrl: this.releaseUrlInput.value,
     };
+  }
+
+  private showCompleteDialog(node: NodeInfo, versionStr: string, versionNum: number): void {
+    const name = this.service.nodeDisplayName(node);
+    this.completeMsg.textContent =
+      `Node ${node.node_id} (${name}) is updating to ${versionStr} (v${versionNum}). ` +
+      `The device will reboot when the transfer completes.`;
+    this.completeDialog.showModal();
   }
 
   private setProgress(msg: string): void {
