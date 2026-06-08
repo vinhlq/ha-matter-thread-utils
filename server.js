@@ -197,13 +197,9 @@ function handleFirmwareUpload(req, res) {
         const jsonName = `${vid}_${pid}_v${swVer}.json`;
         writeFileSync(join(OTA_WRITE_DIR, jsonName), JSON.stringify(descriptor, null, 2));
 
-        await restartMatterServer();
-
-        if (PUSH_THREAD) {
-          try { spawnSync('bash', [PUSH_THREAD], { encoding: 'utf8', timeout: 60_000 }); }
-          catch (e) { console.warn('[upload] push-thread-dataset failed:', e.message); }
-        }
-
+        // python-matter-server scans ota-provider-dir dynamically on update_node —
+        // no restart needed; the file is available immediately after writing.
+        console.log(`[upload] firmware written: ${otaFilename} v${swVer} (${otaBuffer.length} bytes)`);
         sendJson(res, 200, { ok: true, softwareVersion: swVer, softwareVersionString: swVerStr, filename: otaFilename });
       } catch (err) {
         console.error('[upload]', err.message);

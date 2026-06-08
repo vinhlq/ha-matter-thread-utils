@@ -278,12 +278,8 @@ export class OtaPanel {
 
     try {
       const result = await this.service.uploadFirmware(this.selectedFile, fields);
-
-      this.setProgress('Waiting for matter-server restart…');
-      await this.service.waitForReconnect();
       this.clearProgress();
 
-      // Show dialog as soon as upload + restart succeed — OTA trigger is best-effort.
       this.vibrate(200);
       this.showCompleteDialog(node, result.softwareVersionString, result.softwareVersion);
 
