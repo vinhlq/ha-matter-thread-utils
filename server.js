@@ -43,12 +43,10 @@ const OTA_ADDON_SLUG = opt('ota_addon_slug', 'OTA_CONTAINER',  'core_matter_serv
 const OTA_WRITE_DIR  = opt('ota_write_dir',  'OTA_WRITE_DIR',  IS_HA_ADDON ? '/config/updates' : '/matter-data/updates');
 // Path matter-server sees for the same directory (used in otaUrl inside the descriptor).
 const OTA_SERVER_DIR = opt('ota_server_dir', 'OTA_SERVER_DIR', IS_HA_ADDON ? '/config/updates' : '/data/updates');
-const CERT_FILE      = process.env.CERT_FILE ?? '/certs/cert.pem';
-const KEY_FILE       = process.env.KEY_FILE  ?? '/certs/key.pem';
-const PUSH_THREAD    = opt('push_thread_script', 'PUSH_THREAD_SCRIPT', '');
-
-// HA ingress handles TLS; standalone mode uses a self-signed cert.
-const USE_HTTPS = !IS_HA_ADDON && existsSync(CERT_FILE) && existsSync(KEY_FILE);
+const CERT_FILE    = process.env.CERT_FILE   ?? '/certs/cert.pem';
+const KEY_FILE     = process.env.KEY_FILE    ?? '/certs/key.pem';
+const HTTPS_PORT   = parseInt(process.env.HTTPS_PORT ?? opt('https_port', 'HTTPS_PORT', '5174'));
+const PUSH_THREAD  = opt('push_thread_script', 'PUSH_THREAD_SCRIPT', '');
 
 const MIME = {
   '.html':  'text/html; charset=utf-8',
@@ -195,17 +193,22 @@ function handleRequest(req, res) {
   res.end(readFileSync(filePath));
 }
 
-// ---- HTTP / HTTPS server ----
+// ---- HTTP server (port 5173 — HA ingress) ----
 
-const server = USE_HTTPS
+const httpServer = http.createServer(handleRequest);
+
+// ---- HTTPS server (port 5174 — direct browser access, camera requires secure context) ----
+
+const hasCerts    = existsSync(CERT_FILE) && existsSync(KEY_FILE);
+const httpsServer = hasCerts
   ? https.createServer({ cert: readFileSync(CERT_FILE), key: readFileSync(KEY_FILE) }, handleRequest)
-  : http.createServer(handleRequest);
+  : null;
 
 // ---- WebSocket proxy: client /ws → matter-server ----
 
 const wss = new WebSocketServer({ noServer: true });
 
-server.on('upgrade', (req, socket, head) => {
+function handleUpgrade(req, socket, head) {
   if ((req.url ?? '').startsWith('/ws')) {
     wss.handleUpgrade(req, socket, head, (client) => {
       const upstream = new WebSocket(MATTER_WS_URL);
@@ -222,12 +225,21 @@ server.on('upgrade', (req, socket, head) => {
   } else {
     socket.destroy();
   }
-});
+}
 
-server.listen(PORT, '0.0.0.0', () => {
-  const proto = USE_HTTPS ? 'HTTPS' : 'HTTP';
-  const mode  = IS_HA_ADDON ? 'HA add-on (ingress)' : 'standalone';
-  console.log(`[ha-matter-utils] ${proto} on :${PORT} [${mode}]`);
+httpServer.on('upgrade', handleUpgrade);
+if (httpsServer) httpsServer.on('upgrade', handleUpgrade);
+
+const mode = IS_HA_ADDON ? 'HA add-on (ingress)' : 'standalone';
+
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`[ha-matter-utils] HTTP  on :${PORT} [${mode}]`);
   console.log(`[ha-matter-utils] WebSocket proxy → ${MATTER_WS_URL}`);
   console.log(`[ha-matter-utils] OTA write → ${OTA_WRITE_DIR}  (server path: ${OTA_SERVER_DIR})`);
 });
+
+if (httpsServer) {
+  httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+    console.log(`[ha-matter-utils] HTTPS on :${HTTPS_PORT} [${mode}] (self-signed cert — accept once in browser)`);
+  });
+}

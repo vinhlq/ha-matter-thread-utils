@@ -32,9 +32,14 @@ options:
   # Supervisor add-on slug used to restart matter-server after a firmware upload.
   # Use "core_matter_server" for the official HA add-on.
   ota_addon_slug: "core_matter_server"
+  # HTTPS port for direct browser access (camera requires a secure context).
+  # HA ingress uses port 5173 (HTTP); open https://ha-ip:5174 directly for camera.
+  https_port: 5174
 schema:
   matter_ws_url: str?
   ota_server_dir: str?
   ota_addon_slug: str?
+  https_port: int?
 ports:
   5173/tcp: null
+  5174/tcp: 5174
