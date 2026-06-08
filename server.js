@@ -48,20 +48,45 @@ const KEY_FILE     = process.env.KEY_FILE    ?? '/certs/key.pem';
 const HTTPS_PORT   = parseInt(process.env.HTTPS_PORT ?? opt('https_port', 'HTTPS_PORT', '5174'));
 const PUSH_THREAD  = opt('push_thread_script', 'PUSH_THREAD_SCRIPT', '');
 
-// In HA add-on mode, matter-server is on the internal hassio Docker network.
-// Discover its IP at startup via the Supervisor API so we can reach it.
+// Read the default gateway from the Linux routing table.
+// Used to reach host_network add-ons (like matter-server) from inside the hassio Docker network.
+function defaultGateway() {
+  try {
+    const table = readFileSync('/proc/net/route', 'utf8');
+    for (const line of table.split('\n').slice(1)) {
+      const cols = line.trim().split(/\s+/);
+      if (cols.length < 3 || cols[1] !== '00000000' || cols[2] === '00000000') continue;
+      const h = cols[2].padStart(8, '0');
+      return [parseInt(h.slice(6,8),16), parseInt(h.slice(4,6),16),
+              parseInt(h.slice(2,4),16), parseInt(h.slice(0,2),16)].join('.');
+    }
+  } catch {}
+  return null;
+}
+
+// Discover matter-server's reachable address via the Supervisor API.
+// If it uses host_network (ip_address = "0.0.0.0"), fall back to the
+// Docker bridge gateway so we can reach its host-network port.
 if (IS_HA_ADDON) {
   try {
     const _r = await fetch(`http://supervisor/addons/${OTA_ADDON_SLUG}/info`, {
       headers: { Authorization: `Bearer ${process.env.SUPERVISOR_TOKEN}` },
     });
     const _j = await _r.json();
-    const _ip = _j?.data?.ip_address;
+    const _ip  = _j?.data?.ip_address;
+    const _port = new URL(MATTER_WS_URL).port || '5580';
+    console.log(`[ha-matter-utils] Supervisor: matter-server ip_address=${_ip}`);
     if (_ip && _ip !== '0.0.0.0') {
-      const _port = new URL(MATTER_WS_URL).port || '5580';
       MATTER_WS_URL = `ws://${_ip}:${_port}`;
+    } else {
+      // host_network add-on — reach it via the Docker bridge gateway
+      const gw = defaultGateway();
+      if (gw) MATTER_WS_URL = `ws://${gw}:${_port}`;
+      console.log(`[ha-matter-utils] host_network add-on; gateway=${gw}`);
     }
-  } catch { /* fall back to configured URL */ }
+  } catch (e) {
+    console.warn(`[ha-matter-utils] Discovery failed (${e.message}); using ${MATTER_WS_URL}`);
+  }
 }
 
 const MIME = {
