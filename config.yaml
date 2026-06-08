@@ -17,7 +17,7 @@ panel_icon: mdi:chip
 panel_title: Matter Utils
 hassio_api: true   # needed for Supervisor API (restart matter-server, discover its IP)
 map:
-  - type: addon_config
+  - type: config
     read_only: false
 options:
   # WebSocket URL of python-matter-server.
