@@ -2,10 +2,9 @@
 // Serves the built Vite app, proxies /ws to matter-server, handles firmware uploads.
 
 import https from 'node:https';
-import { readFileSync, existsSync, rmdirSync, mkdtempSync, writeFileSync, unlinkSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import { join, extname, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Busboy from 'busboy';
@@ -14,13 +13,16 @@ import { WebSocket, WebSocketServer } from 'ws';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DIST = join(__dirname, 'dist');
 
-const PORT          = parseInt(process.env.PORT          ?? '5173');
-const MATTER_WS_URL = process.env.MATTER_WS_URL          ?? 'ws://127.0.0.1:5580';
-const OTA_CONTAINER = process.env.OTA_CONTAINER          ?? 'matter-server';
-const OTA_DIR       = process.env.OTA_DIR                ?? '/data/updates';
-const CERT_FILE     = process.env.CERT_FILE              ?? '/certs/cert.pem';
-const KEY_FILE      = process.env.KEY_FILE               ?? '/certs/key.pem';
-const PUSH_THREAD   = process.env.PUSH_THREAD_SCRIPT     ?? '';
+const PORT           = parseInt(process.env.PORT           ?? '5173');
+const MATTER_WS_URL  = process.env.MATTER_WS_URL           ?? 'ws://127.0.0.1:5580';
+const OTA_CONTAINER  = process.env.OTA_CONTAINER           ?? 'matter-server';
+// Path this container writes to (shared volume mount point).
+const OTA_WRITE_DIR  = process.env.OTA_WRITE_DIR           ?? '/matter-data/updates';
+// Path matter-server sees for the same volume (used in otaUrl inside the descriptor).
+const OTA_SERVER_DIR = process.env.OTA_SERVER_DIR          ?? '/data/updates';
+const CERT_FILE      = process.env.CERT_FILE               ?? '/certs/cert.pem';
+const KEY_FILE       = process.env.KEY_FILE                ?? '/certs/key.pem';
+const PUSH_THREAD    = process.env.PUSH_THREAD_SCRIPT      ?? '';
 
 const MIME = {
   '.html':  'text/html; charset=utf-8',
@@ -92,20 +94,17 @@ function handleFirmwareUpload(req, res) {
     try {
       const sha256 = createHash('sha256').update(otaBuffer).digest('base64');
 
-      const tmpDir = mkdtempSync(join(tmpdir(), 'matter-ota-'));
-      const tmpOta = join(tmpDir, otaFilename);
-      writeFileSync(tmpOta, otaBuffer);
-
-      runDocker('exec', OTA_CONTAINER, 'mkdir', '-p', OTA_DIR);
-      runDocker('cp', tmpOta, `${OTA_CONTAINER}:${OTA_DIR}/${otaFilename}`);
-      unlinkSync(tmpOta);
+      // Write directly to the shared volume — no docker cp needed.
+      mkdirSync(OTA_WRITE_DIR, { recursive: true });
+      writeFileSync(join(OTA_WRITE_DIR, otaFilename), otaBuffer);
 
       const descriptor = {
         modelVersion: {
           vid, pid,
           softwareVersion: swVer,
           softwareVersionString: swVerStr,
-          otaUrl: `file://${OTA_DIR}/${otaFilename}`,
+          // otaUrl must use the path as matter-server sees it inside its own container.
+          otaUrl: `file://${OTA_SERVER_DIR}/${otaFilename}`,
           otaChecksum: sha256,
           otaChecksumType: 1,
           minApplicableSoftwareVersion: minVer,
@@ -116,11 +115,7 @@ function handleFirmwareUpload(req, res) {
         },
       };
       const jsonName = `${vid}_${pid}_v${swVer}.json`;
-      const tmpJson  = join(tmpDir, jsonName);
-      writeFileSync(tmpJson, JSON.stringify(descriptor, null, 2));
-      runDocker('cp', tmpJson, `${OTA_CONTAINER}:${OTA_DIR}/${jsonName}`);
-      unlinkSync(tmpJson);
-      try { rmdirSync(tmpDir); } catch {}
+      writeFileSync(join(OTA_WRITE_DIR, jsonName), JSON.stringify(descriptor, null, 2));
 
       runDocker('restart', OTA_CONTAINER);
 
