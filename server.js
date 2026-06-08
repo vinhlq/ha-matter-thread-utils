@@ -142,7 +142,9 @@ async function fetchHAThreadTLV() {
 
   return new Promise((resolve) => {
     let ws;
-    try { ws = new WebSocket('ws://homeassistant:8123/api/websocket'); }
+    // Route through the Supervisor proxy — SUPERVISOR_TOKEN is valid there;
+    // direct connections to homeassistant:8123 reject it.
+    try { ws = new WebSocket('ws://supervisor/core/websocket'); }
     catch (e) { console.warn('[thread] WS connect error:', e.message); resolve(null); return; }
 
     let msgId = 1;
