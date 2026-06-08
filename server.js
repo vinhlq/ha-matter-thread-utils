@@ -37,7 +37,7 @@ function opt(haKey, envKey, fallback) {
 }
 
 const PORT           = parseInt(process.env.PORT ?? '5173');
-const MATTER_WS_URL  = opt('matter_ws_url',  'MATTER_WS_URL',  'ws://127.0.0.1:5580');
+let   MATTER_WS_URL  = opt('matter_ws_url',  'MATTER_WS_URL',  'ws://127.0.0.1:5580');
 const OTA_ADDON_SLUG = opt('ota_addon_slug', 'OTA_CONTAINER',  'core_matter_server');
 // Path this container writes to (shared volume mount or addon_config).
 const OTA_WRITE_DIR  = opt('ota_write_dir',  'OTA_WRITE_DIR',  IS_HA_ADDON ? '/config/updates' : '/matter-data/updates');
@@ -47,6 +47,22 @@ const CERT_FILE    = process.env.CERT_FILE   ?? '/certs/cert.pem';
 const KEY_FILE     = process.env.KEY_FILE    ?? '/certs/key.pem';
 const HTTPS_PORT   = parseInt(process.env.HTTPS_PORT ?? opt('https_port', 'HTTPS_PORT', '5174'));
 const PUSH_THREAD  = opt('push_thread_script', 'PUSH_THREAD_SCRIPT', '');
+
+// In HA add-on mode, matter-server is on the internal hassio Docker network.
+// Discover its IP at startup via the Supervisor API so we can reach it.
+if (IS_HA_ADDON) {
+  try {
+    const _r = await fetch(`http://supervisor/addons/${OTA_ADDON_SLUG}/info`, {
+      headers: { Authorization: `Bearer ${process.env.SUPERVISOR_TOKEN}` },
+    });
+    const _j = await _r.json();
+    const _ip = _j?.data?.ip_address;
+    if (_ip && _ip !== '0.0.0.0') {
+      const _port = new URL(MATTER_WS_URL).port || '5580';
+      MATTER_WS_URL = `ws://${_ip}:${_port}`;
+    }
+  } catch { /* fall back to configured URL */ }
+}
 
 const MIME = {
   '.html':  'text/html; charset=utf-8',

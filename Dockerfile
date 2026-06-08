@@ -10,6 +10,8 @@ RUN npm run build
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
+# Copy package.json so Node picks up "type": "module" (avoids ESM reparse warning).
+COPY package.json ./
 # Install server-side deps (busboy + ws only; qr-scanner stays frontend-only)
 RUN npm install --prefer-offline busboy@^1 ws@^8
 

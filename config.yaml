@@ -15,11 +15,7 @@ ingress: true
 ingress_port: 5173
 panel_icon: mdi:chip
 panel_title: Matter Utils
-# host_network lets us reach matter-server on 127.0.0.1:5580.
-# Requires matter-server to expose port 5580 to the host (set 5580/tcp: 5580
-# in its add-on config) when not using host_network on that add-on.
-host_network: true
-hassio_api: true   # needed to restart the matter-server add-on via Supervisor API
+hassio_api: true   # needed for Supervisor API (restart matter-server, discover its IP)
 map:
   - type: addon_config
     read_only: false
