@@ -15,7 +15,8 @@ ingress: true
 ingress_port: 5173
 panel_icon: mdi:chip
 panel_title: Matter Utils
-hassio_api: true   # needed for Supervisor API (restart matter-server, discover its IP)
+hassio_api: true        # needed for Supervisor API (discover matter-server IP)
+hassio_role: manager   # needed to restart other add-ons (OTA firmware upload)
 map:
   - type: config
     read_only: false
