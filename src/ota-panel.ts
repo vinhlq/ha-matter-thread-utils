@@ -281,13 +281,16 @@ export class OtaPanel {
 
       this.setProgress('Waiting for matter-server restart…');
       await this.service.waitForReconnect();
-
-      this.setProgress(`Triggering OTA to v${result.softwareVersion}…`);
-      await this.service.applyLocalUpdate(node, result.softwareVersion);
-
-      this.vibrate(200);
       this.clearProgress();
+
+      // Show dialog as soon as upload + restart succeed — OTA trigger is best-effort.
+      this.vibrate(200);
       this.showCompleteDialog(node, result.softwareVersionString, result.softwareVersion);
+
+      try {
+        await this.service.applyLocalUpdate(node, result.softwareVersion);
+      } catch { /* applyLocalUpdate logs its own errors */ }
+
       await this.handleRefresh();
     } catch (err) {
       this.vibrate([100, 50, 100]);
