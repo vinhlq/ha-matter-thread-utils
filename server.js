@@ -251,7 +251,7 @@ function handleFirmwareUpload(req, res) {
             softwareVersion: swVer,
             softwareVersionString: swVerStr,
             softwareVersionValid: true,
-            otaUrl: `file://${otaFilename}`,
+            otaUrl: `file:///${otaFilename}`,
             otaFileSize: String(otaBuffer.length),
             otaChecksum: sha256,
             otaChecksumType: 1,
