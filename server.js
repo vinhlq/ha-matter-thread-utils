@@ -42,9 +42,11 @@ function opt(haKey, envKey, fallback) {
 const PORT           = parseInt(process.env.PORT ?? '5173');
 let   MATTER_WS_URL  = opt('matter_ws_url',  'MATTER_WS_URL',  'ws://127.0.0.1:5580');
 const OTA_ADDON_SLUG = opt('ota_addon_slug', 'OTA_CONTAINER',  'core_matter_server');
-// Path this container writes to (shared volume mount or addon_config).
-const OTA_WRITE_DIR  = opt('ota_write_dir',  'OTA_WRITE_DIR',  IS_HA_ADDON ? '/config/updates' : '/matter-data/updates');
-// Path matter-server sees for the same directory (used in otaUrl inside the descriptor).
+// With the all_addon_configs map, each add-on's config is at /addon_configs/<slug>/.
+// We write the descriptor + binary into matter-server's config dir so it finds them
+// at startup under its own /config/updates path.
+const OTA_WRITE_DIR  = opt('ota_write_dir',  'OTA_WRITE_DIR',  IS_HA_ADDON ? `/addon_configs/${OTA_ADDON_SLUG}/updates` : '/matter-data/updates');
+// Path matter-server sees for the same directory (used in file:// otaUrl).
 const OTA_SERVER_DIR = opt('ota_server_dir', 'OTA_SERVER_DIR', IS_HA_ADDON ? '/config/updates' : '/data/updates');
 const CERT_FILE    = process.env.CERT_FILE   ?? '/certs/cert.pem';
 const KEY_FILE     = process.env.KEY_FILE    ?? '/certs/key.pem';

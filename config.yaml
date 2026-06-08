@@ -18,12 +18,16 @@ panel_title: Matter Utils
 hassio_api: true        # needed for Supervisor API (discover matter-server IP)
 hassio_role: manager   # needed to restart other add-ons (OTA firmware upload)
 map:
-  - type: config
+  # all_addon_configs mounts every add-on's config directory at /addon_configs/<slug>/
+  # inside our container.  We write OTA descriptor JSON + binary to
+  # /addon_configs/core_matter_server/updates/ which is the same host directory that
+  # matter-server sees as /config/updates/ (its addon_config mount).
+  - type: all_addon_configs
     read_only: false
 options:
   # WebSocket URL of python-matter-server.
   matter_ws_url: "ws://127.0.0.1:5580/ws"
-  # Path that matter-server uses internally for OTA firmware files.
+  # Path that matter-server sees internally for OTA files (used in file:// otaUrl).
   # Official matter-server add-on always uses /config/updates (addon_config map).
   ota_server_dir: "/config/updates"
   # Supervisor add-on slug used to restart matter-server after a firmware upload.
