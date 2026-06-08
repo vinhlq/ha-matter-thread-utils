@@ -46,8 +46,6 @@ const OTA_ADDON_SLUG = opt('ota_addon_slug', 'OTA_CONTAINER',  'core_matter_serv
 // We write the descriptor + binary into matter-server's config dir so it finds them
 // at startup under its own /config/updates path.
 const OTA_WRITE_DIR  = opt('ota_write_dir',  'OTA_WRITE_DIR',  IS_HA_ADDON ? `/addon_configs/${OTA_ADDON_SLUG}/updates` : '/matter-data/updates');
-// Path matter-server sees for the same directory (used in file:// otaUrl).
-const OTA_SERVER_DIR = opt('ota_server_dir', 'OTA_SERVER_DIR', IS_HA_ADDON ? '/config/updates' : '/data/updates');
 const CERT_FILE    = process.env.CERT_FILE   ?? '/certs/cert.pem';
 const KEY_FILE     = process.env.KEY_FILE    ?? '/certs/key.pem';
 const HTTPS_PORT   = parseInt(process.env.HTTPS_PORT ?? opt('https_port', 'HTTPS_PORT', '5174'));
@@ -190,7 +188,7 @@ function handleFirmwareUpload(req, res) {
             softwareVersion: swVer,
             softwareVersionString: swVerStr,
             softwareVersionValid: true,
-            otaUrl: `file://${OTA_SERVER_DIR}/${otaFilename}`,
+            otaUrl: `file://${otaFilename}`,
             otaFileSize: String(otaBuffer.length),
             otaChecksum: sha256,
             otaChecksumType: 1,
@@ -293,7 +291,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`[ha-matter-utils] Build: ${BUILD_DATE}`);
   console.log(`[ha-matter-utils] HTTP  on :${PORT} [${mode}]`);
   console.log(`[ha-matter-utils] WebSocket proxy → ${MATTER_WS_URL}`);
-  console.log(`[ha-matter-utils] OTA write → ${OTA_WRITE_DIR}  (server path: ${OTA_SERVER_DIR})`);
+  console.log(`[ha-matter-utils] OTA write → ${OTA_WRITE_DIR}`);
 });
 
 if (httpsServer) {
