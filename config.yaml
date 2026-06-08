@@ -9,8 +9,6 @@ url: https://github.com/vinhlq/ha-matter-thread-utils
 arch:
   - aarch64
   - amd64
-  - armv7
-  - armhf
 startup: application
 boot: auto
 ingress: true
